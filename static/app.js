@@ -60,6 +60,68 @@
     $("btn-sample").disabled = b;
   }
 
+  // ---------------------------------------------------------------- usage / cost
+  const fmtTok = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+  const fmtUsd = (v) => v == null ? "n/a" : v < 0.01 ? "$" + v.toFixed(5) : v < 1 ? "$" + v.toFixed(4) : "$" + v.toFixed(2);
+  const usageLine = (u) => u ? `${fmtTok(u.total_tokens)} tok · ${fmtUsd(u.cost_usd)} · ${u.seconds}s` : "";
+
+  async function loadUsage() {
+    try {
+      const u = await api("/api/usage?last=1");
+      state.usage = u;
+      const chip = $("chip-usage");
+      chip.querySelector("span:last-child").innerHTML = `session <b>${fmtUsd(u.session.cost_usd)}</b> · ${fmtTok(u.session.total_tokens)} tok`;
+      chip.title = `All time: ${fmtUsd(u.all_time.cost_usd)} over ${u.all_time.calls} Claude calls — click for details`;
+    } catch (_) { /* ignore */ }
+  }
+
+  function usageStat(label, t, sub) {
+    return `<div class="ustat"><div class="l">${label}</div><div class="v">${fmtUsd(t.cost_usd)}<small>${t.calls} calls</small></div>
+      <div class="sub">${fmtTok(t.total_tokens)} tokens · in ${fmtTok(t.input_tokens)} · out ${fmtTok(t.output_tokens)} · cache read ${fmtTok(t.cache_read_tokens)} · cache write ${fmtTok(t.cache_write_tokens)}${t.unpriced_calls ? ` · ${t.unpriced_calls} unpriced` : ""}${sub ? "<br>" + sub : ""}</div></div>`;
+  }
+
+  async function openUsageDrawer() {
+    let u;
+    try { u = await api("/api/usage?last=30"); } catch (e) { toast(e.message, true); return; }
+    state.usage = u;
+    const p = u.current_price;
+    const priceLine = p
+      ? `<div class="price-line">Current model <b>${esc(u.current_model)}</b> — per 1M tokens: input <b>$${p.input}</b> · output <b>$${p.output}</b> · cache read <b>$${p.cache_read}</b> · cache write <b>$${p.cache_write}</b></div>`
+      : `<div class="price-line">Current model <b>${esc(u.current_model)}</b> — no price on file, costs shown as n/a.</div>`;
+    const rows = (arr, key) => arr.map((r) => `<tr><td>${esc(r[key])}</td><td class="num">${r.calls}</td><td class="num">${fmtTok(r.input_tokens)}</td><td class="num">${fmtTok(r.output_tokens)}</td><td class="num">${fmtTok(r.cache_read_tokens)}</td><td class="num">${fmtUsd(r.cost_usd)}</td></tr>`).join("");
+    const recent = u.recent.map((r) => `<tr><td class="mono">${esc(r.ts.replace("T", " "))}</td><td>${esc(r.kind.replace("_", " "))}</td><td>${esc(r.model)}</td><td class="num">${fmtTok(r.input_tokens + r.cache_read_tokens + r.cache_write_tokens)}</td><td class="num">${fmtTok(r.output_tokens)}</td><td class="num">${r.seconds}s</td><td class="num">${fmtUsd(r.cost_usd)}</td></tr>`).join("");
+    const none = (n) => `<tr><td colspan="${n}" class="tiny">no calls yet</td></tr>`;
+    const root = $("drawer-root");
+    root.innerHTML = `
+      <div class="drawer-root">
+        <div class="drawer-back" id="drawer-back"></div>
+        <div class="drawer" style="width:640px">
+          <div class="panel-head"><h2>Token usage &amp; cost</h2><span class="spacer"></span><span class="tiny">server up since ${esc(u.server_started.replace("T", " "))}</span><button class="btn small ghost" id="drawer-close">✕</button></div>
+          <div class="drawer-body">
+            <div class="ustats">
+              ${usageStat("This session", u.session, "since the server started")}
+              ${usageStat("All time", u.all_time, "every Claude call logged in data/usage.jsonl")}
+            </div>
+            ${priceLine}
+            <div class="block"><h4>By model</h4><div class="table-wrap"><table class="utable"><thead><tr><th>Model</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cache read</th><th class="num">Cost</th></tr></thead><tbody>${rows(u.by_model, "model") || none(6)}</tbody></table></div></div>
+            <div class="block"><h4>By type</h4><div class="table-wrap"><table class="utable"><thead><tr><th>Type</th><th class="num">Calls</th><th class="num">Input</th><th class="num">Output</th><th class="num">Cache read</th><th class="num">Cost</th></tr></thead><tbody>${rows(u.by_kind, "kind") || none(6)}</tbody></table></div></div>
+            <div class="block"><h4>Recent calls</h4><div class="table-wrap"><table class="utable"><thead><tr><th>Time</th><th>Type</th><th>Model</th><th class="num">In</th><th class="num">Out</th><th class="num">Latency</th><th class="num">Cost</th></tr></thead><tbody>${recent || none(7)}</tbody></table></div></div>
+            <div class="tiny">Costs are computed locally from the token counts returned by the API and the Anthropic price list in app/usage.py (USD per million tokens). Whisper runs locally and costs nothing. "In" includes cached tokens.</div>
+            <div class="btn-row"><button class="btn small danger" id="usage-reset">Reset usage log</button></div>
+          </div>
+        </div>
+      </div>`;
+    const close = () => { root.innerHTML = ""; };
+    $("drawer-back").addEventListener("click", close);
+    $("drawer-close").addEventListener("click", close);
+    $("usage-reset").addEventListener("click", async () => {
+      if (!confirm("Delete the whole usage log (data/usage.jsonl)?")) return;
+      try { await api("/api/usage", { method: "DELETE" }); toast("Usage log cleared."); close(); loadUsage(); } catch (e) { toast(e.message, true); }
+    });
+    document.addEventListener("keydown", function onKey(e) { if (e.key === "Escape") { close(); document.removeEventListener("keydown", onKey); } });
+  }
+  $("chip-usage").addEventListener("click", openUsageDrawer);
+
   // ---------------------------------------------------------------- health
   async function loadHealth() {
     try {
@@ -299,8 +361,10 @@
       $("prescreen").classList.add("hidden");
       renderTranscript();
       renderAnalysis();
+      if (r.usage) $("analysis-meta").textContent = `updated ${new Date().toLocaleTimeString()} · ${usageLine(r.usage)}`;
       loadHistory();
       loadHealth();
+      loadUsage();
     } catch (e) {
       pendingEl.remove();
       toast(e.message, true);
@@ -602,7 +666,10 @@
 
   $("btn-insights").addEventListener("click", async () => {
     const b = $("btn-insights"); b.disabled = true; const old = b.textContent; b.innerHTML = '<span class="spinner"></span> Generating…';
-    try { const r = await api("/api/report/insights", { method: "POST" }); state.insights = r.insights; renderInsights(r.insights, r.cached); }
+    try {
+      const r = await api("/api/report/insights", { method: "POST" }); state.insights = r.insights; renderInsights(r.insights, r.cached);
+      if (r.usage) { $("insights-meta").textContent += ` · ${usageLine(r.usage)}`; loadUsage(); }
+    }
     catch (e) { toast(e.message, true); }
     finally { b.disabled = false; b.textContent = old; }
   });
@@ -621,4 +688,5 @@
   refreshLock();
   loadHealth();
   loadHistory();
+  loadUsage();
 })();

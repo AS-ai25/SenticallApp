@@ -70,6 +70,23 @@ a { color: var(--c-accent); }
 .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--c-text-3); }
 .chip.ok .dot { background: var(--c-success); }
 .chip.bad .dot { background: var(--c-emergency); }
+.usage-chip { cursor: pointer; transition: background 120ms, border-color 120ms; }
+.usage-chip:hover { background: var(--c-raised); border-color: var(--c-accent-mute); }
+.usage-chip .dot { background: var(--c-accent); }
+.usage-chip b { color: var(--c-text-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* usage drawer */
+.ustats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.ustat { background: var(--c-base); border: 1px solid var(--c-border); border-radius: 7px; padding: 9px 12px; }
+.ustat .l { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-text-3); }
+.ustat .v { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.ustat .v small { font-size: 11px; color: var(--c-text-2); font-weight: 400; margin-left: 5px; }
+.ustat .sub { font-size: 11px; color: var(--c-text-2); margin-top: 3px; }
+.utable td, .utable th { padding: 5px 8px; font-size: 12px; }
+.utable td.num, .utable th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.utable tbody tr { cursor: default; }
+.price-line { font-size: 12px; color: var(--c-text-2); }
+.price-line b { color: var(--c-text-1); font-variant-numeric: tabular-nums; }
 
 /* ---------------------------------------------------------------- layout */
 main { padding: 18px 20px 40px; max-width: 1680px; margin: 0 auto; }

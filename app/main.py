@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
-from . import analyst, analytics, config, store, stt
+from . import analyst, analytics, config, store, stt, usage
 from .guardrails import screen_text
 from .schemas import (
     AnalyzeRequest,
@@ -116,6 +116,7 @@ def analyze(req: AnalyzeRequest):
     if nm.kind == "audio" and not nm.segments:
         raise HTTPException(400, "No speech was detected in the audio.")
 
+    analyst.last_usage = None
     try:
         analysis = analyst.analyze_call(req)
     except anthropic.AuthenticationError:
@@ -144,7 +145,8 @@ def analyze(req: AnalyzeRequest):
         data=analysis.model_dump(),
     )
     store.upsert_call(record)
-    return {"call_id": call_id, "analysis": analysis.model_dump(), "record": record.model_dump()}
+    return {"call_id": call_id, "analysis": analysis.model_dump(), "record": record.model_dump(),
+            "usage": analyst.last_usage}
 
 
 @app.post("/api/calls/{call_id}/select")
@@ -196,6 +198,17 @@ def screen(body: dict):
     return {"category": res.category, "matches": res.matches, "all": res.all_categories}
 
 
+# ---------------------------------------------------------------- usage / cost
+@app.get("/api/usage")
+def usage_summary(last: int = 25):
+    return usage.summary(last=last)
+
+
+@app.delete("/api/usage")
+def usage_reset():
+    return {"deleted": usage.reset_all()}
+
+
 # ---------------------------------------------------------------- analytics
 @app.get("/api/analytics/dashboard")
 def dashboard():
@@ -215,7 +228,8 @@ def report_insights(force: bool = False):
         raise HTTPException(400, "No call data to analyse.")
     key = _dash_hash(dash)
     if not force and key in _insights_cache:
-        return {"insights": _insights_cache[key], "cached": True}
+        return {"insights": _insights_cache[key], "cached": True, "usage": None}
+    analyst.last_usage = None
     try:
         ins = analyst.report_insights(analytics.report_input(dash))
     except anthropic.APIStatusError as e:
@@ -225,7 +239,7 @@ def report_insights(force: bool = False):
     except RuntimeError as e:
         raise HTTPException(502, str(e))
     _insights_cache[key] = ins.model_dump()
-    return {"insights": _insights_cache[key], "cached": False}
+    return {"insights": _insights_cache[key], "cached": False, "usage": analyst.last_usage}
 
 
 @app.post("/api/report/pptx")

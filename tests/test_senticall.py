@@ -250,3 +250,37 @@ def test_pptx_export(client, tmp_path, monkeypatch):
     assert r.status_code == 200, r.text
     assert (tmp_path / r.json()["file"]).exists()
     assert client.get(r.json()["url"]).status_code == 200
+
+
+# ---------------------------------------------------------------- usage / cost
+def test_usage_pricing_and_summary(tmp_path, monkeypatch):
+    from app import usage
+
+    monkeypatch.setattr(usage, "USAGE_PATH", tmp_path / "usage.jsonl")
+    monkeypatch.setattr(usage, "_session", [])
+    assert usage.cost_usd("claude-haiku-5-5", 1_000_000, 0) == 0.10
+    assert usage.cost_usd("claude-opus-5-5-20260401", 0, 1_000_000) == 20.0
+    assert usage.cost_usd("unknown-model", 10, 10) is None
+
+    class U:
+        input_tokens, output_tokens, cache_read_input_tokens, cache_creation_input_tokens = 3000, 1200, 2500, 0
+
+    e = usage.record("live_analysis", "claude-haiku-5-5", U(), call_id="CONV-1", seconds=6.2)
+    assert e["total_tokens"] == 6700 and e["cost_usd"] == pytest.approx(0.000925)
+    usage.record("report_insights", "mystery-model", U())
+    s = usage.summary()
+    assert s["session"]["calls"] == 2 and s["all_time"]["calls"] == 2
+    assert s["all_time"]["unpriced_calls"] == 1
+    assert s["by_kind"][0]["kind"] in ("live_analysis", "report_insights")
+    assert usage.reset_all() == 2 and usage.summary()["all_time"]["calls"] == 0
+
+
+def test_usage_endpoint(client, tmp_path, monkeypatch):
+    from app import usage
+
+    monkeypatch.setattr(usage, "USAGE_PATH", tmp_path / "usage.jsonl")
+    monkeypatch.setattr(usage, "_session", [])
+    r = client.get("/api/usage").json()
+    assert r["current_model"] == "mock-model" and r["current_price"] is None
+    assert r["session"]["cost_usd"] == 0
+    assert "claude-haiku-5-5" in r["prices"]

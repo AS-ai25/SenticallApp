@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import List, Optional
 
 import anthropic
 
-from . import config
+from . import config, usage
 from .guardrails import GUIDANCE, ScreenResult, screen_text
 from .schemas import (
     AnalyzeRequest,
@@ -21,6 +22,7 @@ from .schemas import (
 log = logging.getLogger("senticall.analyst")
 
 _client: Optional[anthropic.Anthropic] = None
+last_usage: Optional[dict] = None  # usage entry of the most recent Claude call in this module
 
 
 def client() -> anthropic.Anthropic:
@@ -208,10 +210,12 @@ def _refusal_analysis(req: AnalyzeRequest, screen: ScreenResult) -> CallAnalysis
 
 
 def analyze_call(req: AnalyzeRequest) -> CallAnalysis:
+    global last_usage
     nm = req.new_material
     raw = nm.text if nm.kind == "text" else " ".join(s.text for s in nm.segments)
     screen = screen_text(raw)
 
+    t0 = time.time()
     response = client().messages.parse(
         model=config.MODEL,
         max_tokens=8000,
@@ -220,6 +224,8 @@ def analyze_call(req: AnalyzeRequest) -> CallAnalysis:
         output_format=CallAnalysis,
         output_config={"effort": "low"},
     )
+    last_usage = usage.record("live_analysis", response.model or config.MODEL, response.usage,
+                              call_id=req.call_id or "", seconds=time.time() - t0)
     if response.stop_reason == "refusal" or response.parsed_output is None:
         log.warning("model refused or returned nothing (stop_reason=%s)", response.stop_reason)
         return _refusal_analysis(req, screen)
@@ -230,7 +236,9 @@ def analyze_call(req: AnalyzeRequest) -> CallAnalysis:
 
 # ---------------------------------------------------------------- report
 def report_insights(dashboard: dict) -> ReportInsights:
+    global last_usage
     payload = json.dumps(dashboard, ensure_ascii=False, sort_keys=True)
+    t0 = time.time()
     response = client().messages.parse(
         model=config.MODEL,
         max_tokens=8000,
@@ -249,6 +257,8 @@ def report_insights(dashboard: dict) -> ReportInsights:
         output_format=ReportInsights,
         output_config={"effort": "medium"},
     )
+    last_usage = usage.record("report_insights", response.model or config.MODEL, response.usage,
+                              seconds=time.time() - t0)
     if response.stop_reason == "refusal" or response.parsed_output is None:
         raise RuntimeError("The model declined to produce the report.")
     return response.parsed_output
