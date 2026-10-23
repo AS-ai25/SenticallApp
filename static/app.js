@@ -224,6 +224,7 @@
     $("btn-endcall").disabled = true;
     $("text-input").value = ""; $("file-input").value = "";
     $("prescreen").classList.add("hidden");
+    clearAudio();
     if (clearCustomer) {
       for (const id of Object.values(FIELDS)) { if (id !== "f-agent") { $(id).value = ""; $(id).dataset.touched = "0"; } }
       state.enrichment = null; $("enrich").classList.add("hidden");
@@ -243,6 +244,25 @@
       resetCall(true);
     } catch (e) { toast(e.message, true); }
   });
+
+  // ---------------------------------------------------------------- audio player
+  let playerUrl = null;
+  function showAudio(blob, label) {
+    if (playerUrl) URL.revokeObjectURL(playerUrl);
+    playerUrl = URL.createObjectURL(blob);
+    const a = $("audio-player");
+    a.src = playerUrl;
+    $("player-name").textContent = `${label} · ${(blob.size / 1024).toFixed(0)} KB`;
+    $("player").classList.remove("hidden", "analysed");
+  }
+  function clearAudio() {
+    if (playerUrl) URL.revokeObjectURL(playerUrl);
+    playerUrl = null;
+    const a = $("audio-player"); a.pause(); a.removeAttribute("src"); a.load();
+    $("player").classList.add("hidden");
+    state.uploadBlob = null; $("file-input").value = "";
+  }
+  $("player-clear").addEventListener("click", clearAudio);
 
   // ---------------------------------------------------------------- composer modes
   $("mode-seg").addEventListener("click", (ev) => {
@@ -288,6 +308,7 @@
         stream.getTracks().forEach((t) => t.stop());
         state.uploadBlob = new Blob(state.chunks, { type: rec.mimeType || "audio/webm" });
         state.uploadBlob.name = "recording.webm";
+        showAudio(state.uploadBlob, "Microphone recording");
         $("btn-rec").textContent = "● Start recording"; $("btn-rec").classList.remove("recording");
         $("rec-status").textContent = `Recorded ${(state.uploadBlob.size / 1024).toFixed(0)} KB — press Analyze.`;
       };
@@ -301,6 +322,7 @@
   $("file-input").addEventListener("change", () => {
     const f = $("file-input").files[0];
     state.uploadBlob = f || null;
+    if (f) showAudio(f, f.name); else clearAudio();
   });
   $("btn-sample").addEventListener("click", async () => {
     try {
@@ -310,6 +332,7 @@
       blob.name = "customer_call_sample.wav";
       state.uploadBlob = blob;
       $("file-input").value = "";
+      showAudio(blob, "Sample call (customer_call_sample.wav)");
       toast("Sample call loaded — press Analyze.");
     } catch (e) { toast(e.message, true); }
   });
@@ -357,6 +380,7 @@
       $("call-id-label").textContent = r.call_id;
       $("btn-endcall").disabled = false;
       $("text-input").value = ""; state.uploadBlob = null; $("file-input").value = "";
+      if (material.kind === "audio") { $("player").classList.add("analysed"); $("player-name").textContent += " · analysed"; }
       $("rec-status").textContent = "Microphone recording is transcribed locally with Whisper, then analysed.";
       $("prescreen").classList.add("hidden");
       renderTranscript();

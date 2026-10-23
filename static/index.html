@@ -119,6 +119,10 @@
             <button class="btn small ghost" id="btn-sample" type="button">Use sample call</button>
           </div>
 
+          <div class="player hidden" id="player">
+            <div class="player-head"><span id="player-name" class="tiny"></span><span class="spacer"></span><button class="btn small ghost" id="player-clear" type="button" title="Remove this audio">✕</button></div>
+            <audio id="audio-player" controls preload="metadata"></audio>
+          </div>
           <div class="prescreen hidden" id="prescreen"></div>
           <div class="composer-row">
             <button class="btn primary" id="btn-analyze" type="button">Analyze ▸</button>
