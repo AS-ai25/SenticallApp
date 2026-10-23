@@ -18,7 +18,7 @@ DEMO_CALLS_PATH = DATA_DIR / "demo_calls.jsonl"
 LIVE_CALLS_PATH = DATA_DIR / "calls.jsonl"
 DEMOGRAPHICS_PATH = DATA_DIR / "customer_demographics.csv"
 
-MODEL = os.getenv("SENTICALL_MODEL", "claude-opus-5-5")
+MODEL = os.getenv("SENTICALL_MODEL", "claude-haiku-5-5")
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
 WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "auto")
 PORT = int(os.getenv("SENTICALL_PORT", "8050"))

@@ -19,7 +19,7 @@ app (no Colab) from the BIU DS20 final project.
 
 ## Stack
 
-FastAPI + vanilla JS/Chart.js frontend · Anthropic Claude (`claude-opus-5-5` by default,
+FastAPI + vanilla JS/Chart.js frontend · Anthropic Claude (`claude-haiku-5-5` by default,
 structured outputs) · faster-whisper (local, GPU if available) · librosa voice features ·
 pandas/scipy analytics · python-pptx export · JSON-lines storage.
 
@@ -33,8 +33,8 @@ python -m uvicorn app.main:app --port 8050
 
 or double-click `START.bat`, then open http://127.0.0.1:8050.
 
-`.env` keys: `ANTHROPIC_API_KEY`, `SENTICALL_MODEL` (e.g. `claude-sonnet-5-5` or
-`claude-haiku-5-5` for faster live analysis), `WHISPER_MODEL` (`small` default, `large-v3` for
+`.env` keys: `ANTHROPIC_API_KEY`, `SENTICALL_MODEL` (`claude-haiku-5-5` default for fast live analysis; `claude-sonnet-5-5` or
+`claude-opus-5-5` for deeper reasoning), `WHISPER_MODEL` (`small` default, `large-v3` for
 best multilingual accuracy), `WHISPER_DEVICE` (`auto|cuda|cpu`).
 
 ## Data
