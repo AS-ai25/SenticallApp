@@ -1,5 +1,8 @@
 /* Senticall — dark product UI */
 :root {
+  --c-blue:         oklch(72% 0.15 250);
+  --c-blue-bg:      oklch(55% 0.12 250 / 16%);
+  --c-blue-border:  oklch(65% 0.14 250 / 55%);
   --c-base:         oklch(12% 0.009 215);
   --c-surface:      oklch(15.5% 0.01 215);
   --c-raised:       oklch(18.5% 0.011 215);
@@ -208,7 +211,38 @@ main { padding: 18px 20px 40px; max-width: 1680px; margin: 0 auto; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------------------------------------------------------------- analysis column */
+/* ---------------------------------------------------------------- analysis column: red / yellow / blue boxes */
+.box { border-radius: 9px; border: 1.5px solid; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.box .box-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; }
+.box .box-title .spacer { flex: 1; }
+.box p { margin: 0; }
+.box-red { background: var(--c-emergency-bg); border-color: var(--c-emergency); animation: pulse-ring 1.6s ease-in-out infinite; }
+.box-red .box-title { color: var(--c-emergency); }
+.box-red .guide { font-size: 12.5px; }
+.box-red .guide b { color: var(--c-emergency); }
+.box-yellow { background: var(--c-warn-bg); border-color: var(--c-warn); }
+.box-yellow .box-title { color: var(--c-warn); }
+.box-yellow .problem { font-size: 14px; font-weight: 600; line-height: 1.4; }
+.box-yellow .goal { color: var(--c-text-2); font-size: 12.5px; }
+.box-yellow .goal b { color: var(--c-warn); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 5px; }
+.box-yellow .urgent { padding: 8px 11px; border-radius: 6px; background: var(--c-emergency-bg); border: 1px solid oklch(62% 0.14 25 / 50%); font-size: 13px; }
+.box-yellow .urgent b { color: var(--c-emergency); }
+.box-yellow .ask { padding: 7px 11px; border-radius: 6px; background: oklch(78% 0.06 78 / 10%); border: 1px dashed oklch(78% 0.12 78 / 45%); font-size: 12.5px; }
+.box-yellow .ask b { color: var(--c-warn); }
+.box-yellow-grid { display: grid; grid-template-columns: 1fr 92px; gap: 12px; align-items: start; }
+.box-blue { background: var(--c-blue-bg); border-color: var(--c-blue-border); }
+.box-blue .box-title { color: var(--c-blue); }
+.box-blue .solutions { border-color: var(--c-blue-border); background: oklch(14% 0.02 250 / 60%); }
+.box-blue .sol { background: transparent; border-bottom-color: oklch(65% 0.1 250 / 25%); }
+.box-blue .sol:hover { background: oklch(55% 0.1 250 / 12%); }
+.box-blue .sol.offered { background: var(--c-success-bg); }
+.box-blue .sol .say { background: oklch(14% 0.02 250 / 70%); border-color: oklch(65% 0.1 250 / 35%); }
+.box-blue .effect { font-size: 12.5px; color: var(--c-text-2); }
+.box-blue .effect b { color: var(--c-blue); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 5px; }
+.vitals-strip { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 12px; color: var(--c-text-2); }
+.vitals-strip .lab { color: var(--c-text-3); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; margin-right: 4px; }
+
+/* ---------------------------------------------------------------- analysis column (legacy pieces still used) */
 .col-analysis .panel-body { gap: 14px; }
 .safety {
   border-radius: 8px; padding: 11px 13px; border: 1px solid; display: flex; flex-direction: column; gap: 6px;

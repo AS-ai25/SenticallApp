@@ -421,22 +421,46 @@
     const level = a.priority_score >= 8 ? "l3" : a.priority_score >= 5 ? "l2" : "l1";
     const kw = (arr) => arr && arr.length ? `<div class="kw">${arr.map((k) => `<span>${esc(k)}</span>`).join("")}</div>` : "";
     const s = a.safety || { category: "none" };
+    const warnIcon = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>`;
+
+    // 1) RED - safety / fraud / sexual content / threats: always first
     let safetyHtml = "";
     if (s.category !== "none") {
-      const danger = s.category === "danger" || s.severity === "high";
       safetyHtml = `
-        <div class="safety ${danger ? "danger" : "warn"}">
-          <div class="title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>
-            ${esc(SAFETY_LABEL[s.category] || s.category)} · ${esc(s.severity)}
-          </div>
-          <div>${esc(s.description)}</div>
+        <div class="box box-red">
+          <div class="box-title">${warnIcon} Security alert · ${esc(SAFETY_LABEL[s.category] || s.category)}<span class="spacer"></span><span>${esc(s.severity)}</span></div>
+          <p>${esc(s.description)}</p>
           ${kw(s.keywords)}
           <div class="guide"><b>What to do:</b> ${esc(s.agent_guidance)}</div>
           ${s.block_solutions ? `<div class="tiny">The request itself is not serviced. Only safe handling steps are listed below.</div>` : ""}
         </div>`;
     }
 
+    // 2) YELLOW - the problem (+ urgent action, next question, priority thermometer)
+    const problemHtml = `
+      <div class="box box-yellow">
+        <div class="box-title">${warnIcon} The problem<span class="spacer"></span><span class="sent ${esc(a.sentiment)}" style="padding:2px 8px"><span class="dot"></span>${esc(a.sentiment)}</span></div>
+        <div class="box-yellow-grid">
+          <div style="display:flex;flex-direction:column;gap:8px;min-width:0">
+            <div class="problem">${esc(a.problem_statement)}</div>
+            ${a.customer_goal ? `<div class="goal"><b>Wants</b>${esc(a.customer_goal)}</div>` : ""}
+            ${kw(a.priority_keywords)}
+            ${a.urgent_action ? `<div class="urgent"><b>Urgent action:</b> ${esc(a.urgent_action)}</div>` : ""}
+            ${a.next_question ? `<div class="ask"><b>Ask next:</b> ${esc(a.next_question)}</div>` : ""}
+          </div>
+          <div class="thermo">
+            <div class="thermo-label">Priority</div>
+            <div class="thermo-score">${a.priority_score}<span class="tiny">/10</span></div>
+            <div class="thermo-body">
+              <div class="thermo-glass"><div class="thermo-mercury ${level}" id="mercury"></div></div>
+              <div class="thermo-bulb ${level}"></div>
+              <div class="thermo-scale"><span>10</span><span>5</span><span>1</span></div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // 3) BLUE - solutions the agent can offer
     const solutions = (a.solutions || []).map((sol, i) => {
       const offered = state.selected.includes(i);
       return `
@@ -447,39 +471,23 @@
           <div class="act"><button class="btn small ${offered ? "" : "primary"}" data-offer="${i}">${offered ? "✓ Offered" : "Offer"}</button></div>
         </div>`;
     }).join("");
-
-    $("analysis").innerHTML = `
-      ${safetyHtml}
-      <div class="vitals">
-        <div class="vitals-left">
-          <span class="sent ${esc(a.sentiment)}"><span class="dot"></span>${esc(a.sentiment)} sentiment</span>
-          ${kw(a.sentiment_keywords)}
-          <dl class="kv">
-            <dt>Language</dt><dd>${esc(a.detected_language)}</dd>
-            <dt>Emotion</dt><dd>${esc(a.emotional_effect)}</dd>
-            <dt>Voice tone</dt><dd>${esc(a.voice_tone)}</dd>
-          </dl>
-        </div>
-        <div class="thermo">
-          <div class="thermo-label">Priority</div>
-          <div class="thermo-score">${a.priority_score}<span class="tiny">/10</span></div>
-          <div class="thermo-body">
-            <div class="thermo-glass"><div class="thermo-mercury ${level}" id="mercury"></div></div>
-            <div class="thermo-bulb ${level}"></div>
-            <div class="thermo-scale"><span>10</span><span>5</span><span>1</span></div>
-          </div>
-        </div>
-      </div>
-      ${kw(a.priority_keywords)}
-      <div class="block"><h4>The problem</h4><p>${esc(a.problem_statement)}</p></div>
-      <div class="block"><h4>Customer wants</h4><p class="muted">${esc(a.customer_goal)}</p></div>
-      ${a.urgent_action ? `<div class="callout urgent"><b>Urgent action:</b> ${esc(a.urgent_action)}</div>` : ""}
-      ${a.next_question ? `<div class="callout ask"><b>Ask next:</b> ${esc(a.next_question)}</div>` : ""}
-      <div class="block">
-        <h4>${s.block_solutions ? "Safe handling steps" : "Solutions to offer"} <span class="tiny">· click Offer to log what you proposed</span></h4>
+    const solutionsHtml = `
+      <div class="box box-blue">
+        <div class="box-title">💡 ${s.block_solutions ? "Safe handling steps" : "Solutions to offer"}<span class="spacer"></span><span class="tiny">click Offer to log what you proposed</span></div>
         <div class="solutions">${solutions || '<div class="sol"><div class="d">No solutions proposed.</div></div>'}</div>
+        ${a.emotional_effect ? `<div class="effect"><b>Effect</b>${esc(a.emotional_effect)}</div>` : ""}
+      </div>`;
+
+    // 4) details
+    const detailsHtml = `
+      <div class="vitals-strip">
+        <span><span class="lab">Language</span>${esc(a.detected_language)}</span>
+        <span><span class="lab">Sentiment words</span>${esc((a.sentiment_keywords || []).join(", ") || "—")}</span>
       </div>
+      <div class="block"><h4>Voice tone</h4><p class="muted">${esc(a.voice_tone)}</p></div>
       <div class="block"><h4>Summary for supervisor</h4><p class="muted">${esc(a.summary)}</p></div>`;
+
+    $("analysis").innerHTML = safetyHtml + problemHtml + solutionsHtml + detailsHtml;
     requestAnimationFrame(() => { const m = $("mercury"); if (m) m.style.height = `${a.priority_score * 10}%`; });
     $("analysis-meta").textContent = `updated ${new Date().toLocaleTimeString()}`;
 
