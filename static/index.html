@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Senticall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2318262b'/%3E%3Cpath d='M9 20c3 0 3-8 6-8s3 8 6 8 2-4 2-4' stroke='%2366d9e8' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">S</div>
+    <div>
+      <div class="brand-name">Senticall</div>
+      <div class="brand-sub">Customer Service Intelligence</div>
+    </div>
+  </div>
+  <nav class="nav" role="tablist">
+    <button class="active" data-view="live" role="tab">Live Assist</button>
+    <button data-view="analytics" role="tab">Analytics &amp; Report</button>
+  </nav>
+  <div class="status">
+    <span class="chip" id="chip-model"><span class="dot"></span><span>model</span></span>
+    <span class="chip" id="chip-stt"><span class="dot"></span><span>whisper</span></span>
+    <span class="chip" id="chip-calls"><span class="dot"></span><span>calls</span></span>
+  </div>
+</header>
+
+<main>
+<!-- ================================================================ LIVE -->
+<section id="view-live" class="view">
+  <div class="live-grid">
+
+    <!-- customer -->
+    <aside class="panel col-customer">
+      <div class="panel-head"><h2>Customer</h2><span class="spacer"></span><span class="tiny" id="call-id-label">no active call</span></div>
+      <div class="panel-body">
+        <div class="lockstate" id="lockstate">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <span>Call panel locked — fill in all customer details</span>
+        </div>
+        <div class="field">
+          <label>Phone number <span class="req">required · 7-12 digits</span></label>
+          <div class="field-row">
+            <input id="f-phone" inputmode="numeric" placeholder="559325678" autocomplete="off">
+            <button class="btn small" id="btn-lookup" type="button" title="Look up this phone in the customer base">Look up</button>
+          </div>
+          <div class="err" id="e-phone"></div>
+        </div>
+        <div class="field">
+          <label>Full name <span class="req">required</span></label>
+          <input id="f-name" placeholder="Customer full name" autocomplete="off">
+          <div class="err" id="e-full_name"></div>
+        </div>
+        <div class="field">
+          <label>Email <span class="req">required</span></label>
+          <input id="f-email" type="email" placeholder="name@example.com" autocomplete="off">
+          <div class="err" id="e-email"></div>
+        </div>
+        <div class="field">
+          <label>Product / service <span class="req">required</span></label>
+          <input id="f-product" placeholder="e.g. LG Smart TV" autocomplete="off">
+          <div class="err" id="e-product"></div>
+        </div>
+        <div class="field">
+          <label>Handling agent <span class="req">required</span></label>
+          <input id="f-agent" placeholder="Your name" autocomplete="off">
+          <div class="err" id="e-agent_name"></div>
+        </div>
+        <div class="enrich hidden" id="enrich"></div>
+        <div class="btn-row">
+          <button class="btn" id="btn-newcall" type="button">New call</button>
+          <button class="btn" id="btn-endcall" type="button" disabled>End call</button>
+        </div>
+        <div class="tiny">The phone look-up only returns the record for the number typed. No other customer data is ever shown.</div>
+      </div>
+    </aside>
+
+    <!-- call -->
+    <section class="panel col-call locked" id="col-call">
+      <div class="panel-head">
+        <h2>Live call</h2>
+        <span class="tiny" id="lang-label"></span>
+        <span class="spacer"></span>
+        <span class="tiny">English transcript · separated by speaker</span>
+      </div>
+      <div class="panel-body">
+        <div class="transcript" id="transcript"><div class="empty">The English transcript will appear here, customer on the left and agent on the right. Record, upload a call file, or type what was said.</div></div>
+
+        <div class="composer">
+          <div class="composer-row">
+            <div class="seg" id="mode-seg">
+              <button class="active" data-mode="text">Type</button>
+              <button data-mode="record">Record</button>
+              <button data-mode="upload">Upload file</button>
+            </div>
+            <div class="seg" id="speaker-seg" title="Who said the typed text">
+              <button class="active" data-speaker="customer">Customer</button>
+              <button data-speaker="agent">Agent</button>
+            </div>
+            <span class="spacer" style="flex:1"></span>
+            <input id="lang-hint" placeholder="language hint (optional)" style="background:var(--c-base);border:1px solid var(--c-border);border-radius:6px;padding:5px 8px;font-size:12px;width:170px;outline:none">
+          </div>
+
+          <div id="mode-text">
+            <textarea id="text-input" placeholder="Type what the customer or the agent said, in any language…"></textarea>
+          </div>
+          <div id="mode-record" class="audio-tools hidden">
+            <button class="btn" id="btn-rec" type="button">● Start recording</button>
+            <span class="tiny" id="rec-status">Microphone recording is transcribed locally with Whisper, then analysed.</span>
+          </div>
+          <div id="mode-upload" class="audio-tools hidden">
+            <input type="file" id="file-input" accept=".wav,.mp3,.m4a,.ogg,.opus,.webm,.flac,.aac,.mp4" style="font-size:12px">
+            <button class="btn small ghost" id="btn-sample" type="button">Use sample call</button>
+          </div>
+
+          <div class="prescreen hidden" id="prescreen"></div>
+          <div class="composer-row">
+            <button class="btn primary" id="btn-analyze" type="button">Analyze ▸</button>
+            <div class="progress hidden" id="progress"><span class="spinner"></span><span id="progress-text"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="lock-overlay" id="lock-overlay">
+        <div class="lock-card">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--c-warn)" stroke-width="1.8"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <h3>Identify the customer first</h3>
+          <p>The live assistant unlocks once every customer field is complete and valid.</p>
+          <ul id="lock-missing"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- analysis -->
+    <aside class="panel col-analysis">
+      <div class="panel-head"><h2>Assistant</h2><span class="spacer"></span><span class="tiny" id="analysis-meta"></span></div>
+      <div class="panel-body" id="analysis">
+        <div class="empty-analysis">Analysis appears here after the first pass: exact problem, priority, urgent action, and solutions you can offer.</div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- history -->
+  <section class="panel history">
+    <div class="panel-head">
+      <h2>Call history</h2>
+      <span class="spacer"></span>
+      <div class="filters">
+        <input id="h-search" placeholder="search…">
+        <select id="h-sent"><option value="">all sentiments</option><option>Negative</option><option>Neutral</option><option>Positive</option></select>
+        <select id="h-src"><option value="">all sources</option><option value="live">live</option><option value="demo">demo</option></select>
+        <button class="btn small" id="btn-export-csv" type="button">Export CSV</button>
+        <button class="btn small danger" id="btn-clear" type="button">Clear live history</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>Time</th><th>Customer</th><th>Phone</th><th>Product</th><th>Lang</th><th>Sentiment</th><th>Priority</th><th>Safety</th><th>Problem</th><th>Src</th><th>Status</th>
+        </tr></thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<!-- ================================================================ ANALYTICS -->
+<section id="view-analytics" class="view hidden">
+  <div class="kpis" id="kpis"></div>
+  <div class="charts">
+    <div class="chart-card"><h3>Overall sentiment <small id="n-total"></small></h3><div class="cw"><canvas id="c-pie"></canvas></div></div>
+    <div class="chart-card"><h3>Sentiment by gender</h3><div class="cw"><canvas id="c-gender"></canvas></div></div>
+    <div class="chart-card"><h3>Sentiment by age group</h3><div class="cw"><canvas id="c-ageGroup"></canvas></div></div>
+    <div class="chart-card"><h3>Sentiment by income</h3><div class="cw"><canvas id="c-incomeGroup2"></canvas></div></div>
+    <div class="chart-card"><h3>Sentiment by education</h3><div class="cw"><canvas id="c-education"></canvas></div></div>
+    <div class="chart-card"><h3>Priority score distribution</h3><div class="cw"><canvas id="c-priority"></canvas></div></div>
+    <div class="chart-card"><h3>Issue themes</h3><div class="cw"><canvas id="c-themes"></canvas></div></div>
+    <div class="chart-card wide"><h3>Sentiment by month</h3><div class="cw"><canvas id="c-month"></canvas></div></div>
+    <div class="chart-card wide"><h3>Sentiment by day of week</h3><div class="cw"><canvas id="c-day_of_week"></canvas></div></div>
+    <div class="chart-card wide"><h3>Sentiment by hour</h3><div class="cw"><canvas id="c-hour"></canvas></div></div>
+  </div>
+  <div class="note" style="margin-top:8px">Letters after a bar (A = Negative, B = Neutral, C = Positive) mark the sentiments this bar is significantly higher than (one-sided two-proportion z-test, α = 0.05).</div>
+
+  <section class="panel insights">
+    <div class="panel-head">
+      <h2>AI report</h2>
+      <span class="spacer"></span>
+      <span class="tiny" id="insights-meta"></span>
+      <button class="btn small primary" id="btn-insights" type="button">Generate AI insights</button>
+      <button class="btn small" id="btn-pptx" type="button">Export PowerPoint</button>
+    </div>
+    <div class="panel-body">
+      <div id="insights-body" class="muted">Click “Generate AI insights” to get the executive summary and strategic recommendations from Claude, based on the charts above. Export PowerPoint builds a deck with the charts (and the insights, once generated).</div>
+    </div>
+  </section>
+</section>
+</main>
+
+<div id="drawer-root"></div>
+<div id="toast-root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
